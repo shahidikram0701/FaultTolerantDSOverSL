@@ -49,7 +49,7 @@ func GetShardPods(clientset *kubernetes.Clientset, labelSelector string, expecte
 	query := metav1.ListOptions{LabelSelector: labelSelector}
 
 	for {
-		pods, err := clientset.CoreV1().Pods(namespace).List(query)
+		pods, err := clientset.CoreV1().Pods(namespace).List(nil, query)
 		if err != nil {
 			log.Panicf(err.Error())
 		}
