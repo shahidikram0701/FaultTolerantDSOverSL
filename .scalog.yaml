@@ -2,9 +2,12 @@ order-port: 26733
 raft-port: 27238
 order-replication-factor: 3
 order-batching-interval: 1000ms
+order-ip-address: 192.168.64.24
 
 data-port: 23282
 data-replication-factor: 2
 data-batching-interval: 1000ms
+data-ip-address: 192.168.64.25
 
 disc-port: 23472
+disc-ip-address: 192.168.64.23

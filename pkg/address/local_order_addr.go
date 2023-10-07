@@ -2,6 +2,8 @@ package address
 
 import (
 	"fmt"
+
+	"github.com/spf13/viper"
 )
 
 type LocalOrderAddr struct {
@@ -17,5 +19,6 @@ func (s *LocalOrderAddr) UpdateAddr(port uint16) {
 }
 
 func (s *LocalOrderAddr) Get() string {
-	return fmt.Sprintf("127.0.0.1:%v", s.port)
+	ipAddr := string(viper.GetString("order-ip-address"))
+	return fmt.Sprintf("%v:%v", ipAddr, s.port)
 }

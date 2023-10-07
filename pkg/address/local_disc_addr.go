@@ -2,6 +2,8 @@ package address
 
 import (
 	"fmt"
+
+	"github.com/spf13/viper"
 )
 
 type LocalDiscAddr struct {
@@ -17,5 +19,6 @@ func (s *LocalDiscAddr) UpdateAddr(port uint16) {
 }
 
 func (s *LocalDiscAddr) Get() string {
-	return fmt.Sprintf("127.0.0.1:%v", s.port)
+	ipAddr := string(viper.GetString("disc-ip-address"))
+	return fmt.Sprintf("%v:%v", ipAddr, s.port)
 }
