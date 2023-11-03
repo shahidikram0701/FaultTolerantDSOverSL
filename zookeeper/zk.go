@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	pb2 "github.com/scalog/scalog/zookeeper/zookeepermetadatapb"
 	pb "github.com/scalog/scalog/zookeeper/zookeeperpb"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -18,6 +19,33 @@ type Zookeeper struct {
 	sync.RWMutex
 	consensus *Consensus
 	// data strucure
+}
+
+func (zk *Zookeeper) ProbeForMetadataAndUpdate() {
+	go zk.consensus.metadata.ProbeAndUpdate()
+	go zk.consensus.metadata.TrimMetadata()
+}
+
+func (zk *Zookeeper) FetchShardIdFromLog(gsn int64) (int32, error) {
+	return zk.consensus.FetchShardId(gsn)
+}
+
+func (zk *Zookeeper) GetShardIdForGSNFromMetadata(gsn int64) (int32, error) {
+	return zk.consensus.metadata.GetShardId(gsn)
+}
+
+func (zk *Zookeeper) GetAllMetadata() ([]*pb2.MetadataListItem, error) {
+	return zk.consensus.metadata.GetAllMetadata()
+}
+
+func (zk *Zookeeper) GetShardIdMapping(gsn int64) (int32, error) {
+	sid, err := zk.consensus.metadata.FetchShardId(gsn)
+
+	if err != nil {
+		log.Fatalf("[ Zookeeper ]%v", err)
+		return -1, err
+	}
+	return sid, nil
 }
 
 type ZKServer struct {
@@ -39,11 +67,17 @@ func ZKInit() {
 	zkState = &Zookeeper{
 		consensus: consensusModule,
 	}
-	zkPort := uint16(viper.GetInt("zk-port"))
-	startZKServer(zkPort)
+	zkPort := int32(viper.GetInt("zk-port"))
+	zid := int32(viper.GetInt("zid"))
+
+	zkMetadataPort := int32(viper.GetInt("zk-metadata-port"))
+
+	go StartZKMetadataServer(zkMetadataPort + zid)
+	zkState.ProbeForMetadataAndUpdate()
+	StartZKServer(zkPort + zid)
 }
 
-func startZKServer(port uint16) {
+func StartZKServer(port int32) {
 	log.Printf("[ Zookeeper ]Starting Zookeeper server on port %v", port)
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
