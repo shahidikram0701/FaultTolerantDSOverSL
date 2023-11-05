@@ -34,7 +34,8 @@ func StartData(sid, rid int32) {
 	}
 	log.Infof("%v: %v", "data-batching-interval", batchingInterval)
 	basePort := uint16(viper.GetInt("data-port"))
-	port := basePort + uint16(sid*numReplica+rid)
+	//port := basePort + uint16(sid*numReplica+rid)
+	port := basePort
 	log.Infof("%v: %v", "data-port", port)
 	orderPort := uint16(viper.GetInt("order-port"))
 	// for kubernetes deployment, use k8sOrderAddr := address.NewK8sOrderAddr(orderPort)

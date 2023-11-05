@@ -2,6 +2,7 @@ package address
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/spf13/viper"
 )
@@ -20,7 +21,11 @@ func (s *LocalDataAddr) UpdateBasePort(basePort uint16) {
 }
 
 func (s *LocalDataAddr) Get(sid, rid int32) string {
-	port := s.basePort + uint16(sid*s.numReplica+rid)
-	ipAddr := string(viper.GetString("data-ip-address"))
+	port := s.basePort
+	//ipAddr := string(viper.GetString(fmt.Sprintf("data-ip-address-%d-%d", sid, rid)))
+
+	ipAddr := viper.GetStringSlice(fmt.Sprintf("data-ip-address-%d", sid))[rid]
+
+	log.Printf("The data addr is %v", ipAddr)
 	return fmt.Sprintf("%v:%v", ipAddr, port)
 }

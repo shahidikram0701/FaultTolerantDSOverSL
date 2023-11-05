@@ -19,6 +19,8 @@ func (s *LocalOrderAddr) UpdateAddr(port uint16) {
 }
 
 func (s *LocalOrderAddr) Get() string {
-	ipAddr := string(viper.GetString("order-ip-address"))
+
+	ipAddr := viper.GetStringSlice(fmt.Sprintf("order-ip-address"))[0]
+
 	return fmt.Sprintf("%v:%v", ipAddr, s.port)
 }
