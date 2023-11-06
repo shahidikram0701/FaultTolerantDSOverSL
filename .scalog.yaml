@@ -3,35 +3,35 @@ raft-port: 27238
 order-batching-interval: 1000ms
 
 order-ip-address:
-  - 192.168.64.14
-  - 192.168.64.19
+  - 128.110.216.204
+  - 128.110.216.193
+  - 128.110.216.213
 
 data-port: 23282
 data-replication-factor: 2
 data-batching-interval: 1000ms
 data-ip-address-0:
-  - 192.168.64.16
-  - 192.168.64.17
+  - 128.110.216.208
+  - 128.110.216.197
 data-ip-address-1:
-  - 192.168.64.16
-  - 192.168.64.17
+  - 128.110.216.211
+  - 128.110.216.224
 
 disc-port: 23472
-disc-ip-address: 192.168.64.15
+disc-ip-address: 128.110.216.216
 
 zk-port: 23222
-zk-ip-address: 192.168.64.29
+zk-ip-address: 128.110.216.201
 zk-servers:
-  - 192.168.64.29
-  - 192.168.64.30
-  - 192.168.64.31
+  - 128.110.216.201
+  - 128.110.216.195
+  - 128.110.216.229
 zids:
   - 0
   - 1
   - 2
-# zk-ip-address: 127.0.0.1
-zk-sleep-if-no-update: 100 #ms
 
+zk-sleep-if-no-update: 100 #ms
 zk-metadata-port: 23300
 
 metadata-trim-threshold: 5000 
