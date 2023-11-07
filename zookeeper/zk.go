@@ -17,7 +17,8 @@ import (
 type Zookeeper struct {
 	sync.RWMutex
 	consensus *Consensus
-	// data strucure
+	// data structure
+	trie *Trie
 }
 
 type ZKServer struct {
@@ -38,6 +39,7 @@ func ZKInit() {
 
 	zkState = &Zookeeper{
 		consensus: consensusModule,
+		trie:      &Trie{Root: &TrieNode{Value: "/"}},
 	}
 	zkPort := uint16(viper.GetInt("zk-port"))
 	startZKServer(zkPort)
