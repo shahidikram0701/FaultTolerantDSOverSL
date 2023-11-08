@@ -5,6 +5,7 @@ import (
 	zk "github.com/scalog/scalog/zookeeper"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // zookeeper represents the client command
@@ -19,4 +20,6 @@ var zkCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(zkCmd)
+	zkCmd.PersistentFlags().IntP("zid", "z", 0, "zookeeper index")
+	viper.BindPFlag("zid", zkCmd.PersistentFlags().Lookup("zid"))
 }

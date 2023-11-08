@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 
 	pb "github.com/scalog/scalog/zookeeper/zookeeperpb"
 	"github.com/spf13/viper"
@@ -13,19 +15,37 @@ import (
 )
 
 func Start() {
-	zkPort := uint16(viper.GetInt("zk-port"))
-	zkIpAddr := string(viper.GetString("zk-ip-address"))
-	serverAddress := fmt.Sprintf("%v:%v", zkIpAddr, zkPort)
+	zkNodesIp := viper.GetStringSlice("zk-servers")
+	clients := []pb.ZooKeeperClient{}
 
-	conn, err := grpc.Dial(serverAddress, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("Failed to connect: %v", err)
+	zkPort := int32(viper.GetInt("zk-port"))
+
+	zids_ := viper.Get("zids").([]interface{})
+	var zids []int
+
+	for _, zid_ := range zids_ {
+		zids = append(zids, zid_.(int))
 	}
-	defer conn.Close()
 
-	client := pb.NewZooKeeperClient(conn)
+	rand.Seed(time.Now().UnixNano())
+
+	for idx, ip := range zkNodesIp {
+		fmt.Printf("initiating client to: %v:%v\n", ip, zkPort+int32(zids[idx]))
+		serverAddress := fmt.Sprintf("%v:%v", ip, zkPort+int32(zids[idx]))
+
+		conn, err := grpc.Dial(serverAddress, grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("Failed to connect: %v", err)
+		}
+		defer conn.Close()
+
+		client := pb.NewZooKeeperClient(conn)
+
+		clients = append(clients, client)
+	}
 
 	for {
+		client := clients[rand.Intn(len(clients))]
 		fmt.Println("Choose an action:")
 		fmt.Println("1. Create ZNode")
 		fmt.Println("2. Read ZNode")

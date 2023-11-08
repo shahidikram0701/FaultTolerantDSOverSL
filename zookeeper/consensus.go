@@ -87,3 +87,22 @@ func (c *Consensus) ReadFromLog(gsn int64, sid int32) (string, error) {
 
 	return record, nil
 }
+
+func (c *Consensus) FetchShardId(gsn int64) (int32, error) {
+	if gsn < 0 {
+		return -1, errors.New("Invalid GSN")
+	}
+	rid := int32(0)
+	numShards := int(viper.GetInt("shards"))
+
+	for i := 0; i < numShards; i++ {
+		sid := int32(i)
+		record, err := c.scalogClient.Read(gsn, sid, rid)
+
+		if record != "" && err == nil {
+			return sid, nil
+		}
+	}
+
+	return -1, errors.New(fmt.Sprintf("[ ConsensusModule ][ FetchShardId ] Failed to find shard if for the gsn: %v", gsn))
+}
