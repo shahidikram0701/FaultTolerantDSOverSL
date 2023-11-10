@@ -86,7 +86,7 @@ func Start() {
 				continue
 			}
 
-			path = strings.Trim(path, "/") // Remove leading/trailing slashes
+			// path = strings.Trim(path, "/") // Remove leading/trailing slashes
 
 			pathObj := &pb.Path{Path: path}
 			getResponse, err := client.GetZNode(context.Background(), pathObj)

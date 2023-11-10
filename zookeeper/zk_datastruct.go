@@ -2,6 +2,7 @@ package zookeeper
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -97,28 +98,37 @@ func (t *Trie) Delete(components []string) bool {
 }
 
 // PrintTrie prints the trie in a structured format.
-func (t *Trie) PrintTrie(node *TrieNode, depth int) {
+func (t *Trie) PrintTrie(node *TrieNode, depth int) string {
 	if node == nil {
-		return
+		return ""
 	}
 
+	serialisedTrie := ""
+
 	for i := 0; i < depth; i++ {
-		fmt.Print("  ")
+		serialisedTrie += "  "
+		// log.Print("  ")
 	}
-	fmt.Printf("%s:: [", node.Value)
+	serialisedTrie += fmt.Sprintf("%s:: [", node.Value)
+	// log.Printf("%s:: [", node.Value)
 
 	sz := len(node.data) - 1
 	if sz >= 0 {
 		for i := 0; i < sz; i++ {
-			fmt.Printf("%s::%s, ", node.operation[i], node.data[i])
+			serialisedTrie += fmt.Sprintf("%s::%s, ", node.operation[i], node.data[i])
+			// log.Printf("%s::%s, ", node.operation[i], node.data[i])
 		}
-		fmt.Printf("%s::%s", node.operation[sz], node.data[sz])
+		serialisedTrie += fmt.Sprintf("%s::%s", node.operation[sz], node.data[sz])
+		// log.Printf("%s::%s", node.operation[sz], node.data[sz])
 	}
-	fmt.Printf("]\n")
+	serialisedTrie += fmt.Sprintf("]\n")
+	// log.Printf("]\n")
 
 	for _, child := range node.Children {
-		t.PrintTrie(child, depth+1)
+		serialisedTrie += t.PrintTrie(child, depth+1)
 	}
+
+	return serialisedTrie
 }
 
 /* Parsing of the main operation received from ZK client */
@@ -146,6 +156,47 @@ func parse(input string) ([]string, string, string) {
 	components = components[1:]
 
 	return components, operation, value
+}
+
+func (trie *Trie) Execute(data string) {
+	pathComponents, operation, value := parse(data)
+
+	switch operation {
+	case "CREATE":
+		trie.Upsert(pathComponents, operation, value)
+		// trie.PrintTrie(trie.Root, 0)
+	case "UPDATE":
+		trie.Upsert(pathComponents, operation, value)
+		// trie.PrintTrie(trie.Root, 0)
+	case "DELETE_DATA":
+		trie.Upsert(pathComponents, operation, " ")
+		// trie.PrintTrie(trie.Root, 0)
+	case "DELETE":
+		ret := trie.Delete(pathComponents)
+		if !ret {
+			log.Printf("[ Zookeeper ][ Datastructure ][ Excute ][ DELETE ]Path `%s` does not exist.\n", strings.Join(pathComponents, "/"))
+		}
+	}
+
+}
+
+func (trie *Trie) ExecuteGet(command string) (int, string, error) {
+	pathComponents, _, value := parse(command)
+	intValue, err := strconv.Atoi(value)
+	if err != nil {
+		err_ := fmt.Sprintf("[ Zookeeper ][ Datastructure ][ ExecuteGet ]Path `%v`. Error in version value parsing: %v", command, err)
+		log.Printf(err_)
+		return -1, "", err
+	}
+
+	ver, _, data := trie.Get(pathComponents, intValue)
+	if ver == -1 {
+		err_ := fmt.Sprintf("[ Zookeeper ][ Datastructure ][ ExecuteGet ]Path `%v`. Failed to get: %v", command, err)
+		log.Printf(err_)
+		return -1, "", err
+	}
+
+	return ver, data, nil
 }
 
 /* Only for testing - Use package main to test independently */

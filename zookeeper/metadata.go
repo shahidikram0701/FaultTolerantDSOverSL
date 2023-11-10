@@ -252,7 +252,8 @@ func (md *Metadata) FetchShardIdFromLog(gsn int64) (int32, error) {
 	sid, err := zkState.FetchShardIdFromLog(gsn)
 
 	if err != nil {
-		log.Fatalf("[ ZookKeeper Metadata ][ FetchShardIdFromLog ] Didnt find the gsn: %v in the log", gsn)
+		log.Printf("[ ZookKeeper Metadata ][ FetchShardIdFromLog ] Didnt find the gsn: %v in the log", gsn)
+		return -1, errors.New(fmt.Sprintf("[ ZookKeeper Metadata ][ FetchShardIdFromLog ] Didnt find the gsn: %v in the log", gsn))
 	}
 
 	return sid, err
@@ -295,6 +296,17 @@ func (md *Metadata) TrimMetadata() {
 			log.Printf("[ Zookeeper Metadata ][ TrimMetadata ] Trying a metadata trim")
 			md.DeleteDoneEntries()
 		}
+	}
+}
+
+func (md *Metadata) UpdateEntryState(gsn int64) {
+	md.Lock()
+	defer md.Unlock()
+
+	if item, ok := md.items[gsn]; ok {
+		item.State = Done
+
+		md.items[gsn] = item
 	}
 }
 
