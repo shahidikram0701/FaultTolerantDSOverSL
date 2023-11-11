@@ -11,7 +11,7 @@ import (
 )
 
 type Consensus struct {
-	LSN int32 // last sequence number in the log that is applied
+	LSN int64 // last sequence number in the log that is applied
 
 	scalogClient *client.Client
 	metadata     *Metadata
@@ -54,6 +54,14 @@ func NewConsensusModule() (*Consensus, error) {
 	}
 	log.Printf("[ ConsensusModule ]Initialised consensus module successfully")
 	return consensusModule, nil
+}
+
+func (c *Consensus) IncrementLSN() {
+	c.LSN++
+}
+
+func (c *Consensus) UpdateLSN(newLSN int64) {
+	c.LSN = newLSN
 }
 
 func (c *Consensus) WriteToLog(record string) (int64, int32, error) {
@@ -105,4 +113,41 @@ func (c *Consensus) FetchShardId(gsn int64) (int32, error) {
 	}
 
 	return -1, errors.New(fmt.Sprintf("[ ConsensusModule ][ FetchShardId ] Failed to find shard if for the gsn: %v", gsn))
+}
+
+func (c *Consensus) ReadBulkData(gsn1 int64, gsn2 int64) ([]string, error) {
+	// Get Shard Ids of all the sequence numbers from gsn1 to gsn2 both included
+	shardIds := make(map[int64]int32)
+
+	// For all the sequence numbers from gsn1 to gsn2 call FetchShardIds and populate the shardIds array
+	for gsn := gsn1; gsn <= gsn2; gsn++ {
+		shardID, err := c.metadata.FetchShardId(gsn)
+		if err != nil {
+			log.Fatalf("[ Consensus ][ ReadBulkData ] ShardId fetch for gsn: %v Failed; %v", gsn, err)
+			return nil, err
+		}
+		shardIds[gsn] = shardID
+	}
+
+	// Initialize a slice to accumulate the records
+	records := make([]string, 0)
+
+	// For each of the gsn between gsn1 and gsn2, use the ReadFromLog method to fetch the record and append it to the records slice
+	for gsn := gsn1; gsn <= gsn2; gsn++ {
+		shardID, exists := shardIds[gsn]
+		if !exists {
+			return nil, errors.New(fmt.Sprintf("[ Consensus ][ ReadBulkData ]Shard ID not found for GSN: %v", gsn))
+		}
+
+		record, err := c.ReadFromLog(gsn, shardID)
+		if err != nil {
+			log.Fatalf("[ Consensus ][ ReadBulkData ]Error reading record for gsn: %v, sid: %v; %v", gsn, shardID, err)
+			return nil, err
+		}
+
+		// Append the record to the records slice
+		records = append(records, record)
+	}
+
+	return records, nil
 }

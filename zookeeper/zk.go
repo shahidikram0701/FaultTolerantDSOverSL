@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"strconv"
-	"strings"
 	"sync"
+	"time"
 
 	pb2 "github.com/scalog/scalog/zookeeper/zookeepermetadatapb"
 	pb "github.com/scalog/scalog/zookeeper/zookeeperpb"
@@ -18,7 +17,8 @@ import (
 type Zookeeper struct {
 	sync.RWMutex
 	consensus *Consensus
-	// data strucure
+	// data structure
+	trie *Trie
 }
 
 func (zk *Zookeeper) ProbeForMetadataAndUpdate() {
@@ -48,6 +48,73 @@ func (zk *Zookeeper) GetShardIdMapping(gsn int64) (int32, error) {
 	return sid, nil
 }
 
+// This should be called by an independent go thread
+// Untested
+// Pratik
+func (zk *Zookeeper) CheckAndUpdateTrie() {
+	sleepForIfNoUpdate := time.Duration(int(viper.GetInt("zk-sleep-if-no-update"))) * time.Millisecond
+	for {
+		zk.Lock()
+		nextOpAt := zk.consensus.LSN
+		shardId, err := zk.consensus.metadata.FetchShardId(nextOpAt)
+
+		if err != nil {
+			log.Printf("[ Zookeeper ][ UpdateTrie ]No new update to apply; %v", err)
+			time.Sleep(sleepForIfNoUpdate)
+			zk.Unlock()
+			continue
+		}
+
+		op, err := zk.consensus.ReadFromLog(nextOpAt, shardId)
+		if err != nil {
+			log.Printf("[ Zookeeper ][ UpdateTrie ]Reading operation from log failed for lsn: %v at sid: %v with error: %v", nextOpAt, shardId, err)
+			zk.Unlock()
+			continue
+		}
+
+		log.Printf("[ Zookeeper ][ UpdateTrie ]Updating trie with operation: %v", op)
+		zk.trie.Execute(op)
+		zk.consensus.metadata.UpdateEntryState(nextOpAt)
+		zk.consensus.IncrementLSN()
+		zk.Unlock()
+	}
+}
+
+func (zk *Zookeeper) ApplyAllPendingOpsAndReturnRead(latestGSN int64, readOp string) (int, []byte, error) {
+	zk.Lock()
+	defer zk.Unlock()
+
+	currentLSN := zk.consensus.LSN
+
+	operations, err := zk.consensus.ReadBulkData(currentLSN, latestGSN)
+
+	if err != nil {
+		log.Fatalf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Error reading all the pending ops from seq number: %v to %v", currentLSN, latestGSN)
+		return -1, nil, err
+	}
+
+	for idx, op := range operations {
+		log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Applying operation %v at sequence number: %v", op, currentLSN+int64(idx))
+		zk.trie.Execute(op)
+		zk.consensus.metadata.UpdateEntryState(currentLSN + int64(idx))
+	}
+
+	log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Applied all pending ops")
+	zk.consensus.UpdateLSN(latestGSN + 1)
+
+	log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Trie: \n%v", zk.trie.PrintTrie(zk.trie.Root, 0))
+
+	ver, data, err := zk.trie.ExecuteGet(readOp)
+
+	if err != nil {
+		log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Error: %v", err)
+		return -1, nil, err
+	}
+
+	return ver, []byte(data), nil
+
+}
+
 type ZKServer struct {
 	pb.UnimplementedZooKeeperServer
 }
@@ -66,6 +133,7 @@ func ZKInit() {
 
 	zkState = &Zookeeper{
 		consensus: consensusModule,
+		trie:      &Trie{Root: &TrieNode{Value: "/"}},
 	}
 	zkPort := int32(viper.GetInt("zk-port"))
 	zid := int32(viper.GetInt("zid"))
@@ -74,6 +142,7 @@ func ZKInit() {
 
 	go StartZKMetadataServer(zkMetadataPort + zid)
 	zkState.ProbeForMetadataAndUpdate()
+	go zkState.CheckAndUpdateTrie()
 	StartZKServer(zkPort + zid)
 }
 
@@ -94,7 +163,7 @@ func StartZKServer(port int32) {
 
 func (zk *ZKServer) CreateZNode(ctx context.Context, znode *pb.ZNode) (*pb.Path, error) {
 	// write
-	op := "write"
+	op := "CREATE"
 	path := znode.GetPath()
 	data := string(znode.GetData()[:])
 
@@ -105,9 +174,9 @@ func (zk *ZKServer) CreateZNode(ctx context.Context, znode *pb.ZNode) (*pb.Path,
 		return nil, err
 	}
 
-	// return &pb.Path{Path: path}, nil
-	log.Printf("[ Zookeeper ][ CreateZNode ]Write successful")
-	return &pb.Path{Path: fmt.Sprintf("%v/%v", gsn, shard)}, nil // This is just for testing. Return the path instead, ie, uncomment the above line.
+	log.Printf("[ Zookeeper ][ CreateZNode ]Write successful. Wrote data into scalog at gsn: %v shard: %v", gsn, shard)
+	return &pb.Path{Path: path}, nil
+	// return &pb.Path{Path: fmt.Sprintf("%v/%v", gsn, shard)}, nil // This is just for testing. Return the path instead, ie, uncomment the above line.
 }
 
 func (zk *ZKServer) DeleteZNode(ctx context.Context, path *pb.Path) (*pb.Empty, error) {
@@ -121,22 +190,32 @@ func (zk *ZKServer) ExistsZNode(ctx context.Context, path *pb.Path) (*pb.Stat, e
 func (zk *ZKServer) GetZNode(ctx context.Context, path *pb.Path) (*pb.ZNode, error) {
 	p := path.GetPath()
 	log.Printf("[ Zookeeper ][ GetZNode ]Path: %v", p)
-	// below is only for testing
-	brokenPath := strings.Split(p, "/")
-	gsn, _ := strconv.Atoi(brokenPath[0])
-	sid, _ := strconv.Atoi(brokenPath[1])
 
-	log.Printf("[ Zookeeper ][ GetZNode ]GSN=%v; SID=%v\n", gsn, sid)
-
-	record, err := zkState.consensus.ReadFromLog(int64(gsn), int32(sid))
+	op := "GET"
+	record := fmt.Sprintf("%v::%v", op, p)
+	gsn, shard, err := zkState.consensus.WriteToLog(record)
 
 	if err != nil {
 		return nil, err
 	}
+
+	log.Printf("[ Zookeeper ][ GetZNode ][ GetZNode ]Inserted Read operation at gsn: %v and shard: %v", gsn, shard)
+
+	ver, data, err := zkState.ApplyAllPendingOpsAndReturnRead(gsn, record)
+
+	if err != nil {
+		log.Printf("[ Zookeeper ][ GetZNode ]Error reading data: %v", err)
+		return nil, err
+	}
+
 	return &pb.ZNode{
 		Path: p,
-		Data: []byte(record),
+		Data: data,
+		Stat: &pb.Stat{
+			Version: int32(ver),
+		},
 	}, nil
+
 }
 
 func (zk *ZKServer) SetZNode(ctx context.Context, request *pb.SetZNodeRequest) (*pb.Stat, error) {
