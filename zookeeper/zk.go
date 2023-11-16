@@ -48,9 +48,6 @@ func (zk *Zookeeper) GetShardIdMapping(gsn int64) (int32, error) {
 	return sid, nil
 }
 
-// This should be called by an independent go thread
-// Untested
-// Pratik
 func (zk *Zookeeper) CheckAndUpdateTrie() {
 	sleepForIfNoUpdate := time.Duration(int(viper.GetInt("zk-sleep-if-no-update"))) * time.Millisecond
 	for {
@@ -102,7 +99,7 @@ func (zk *Zookeeper) ApplyAllPendingOpsAndReturnRead(latestGSN int64, readOp str
 	log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Applied all pending ops")
 	zk.consensus.UpdateLSN(latestGSN + 1)
 
-	log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Trie: \n%v", zk.trie.PrintTrie(zk.trie.Root, 0))
+	// log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Trie: \n%v", zk.trie.PrintTrie(zk.trie.Root, 0))
 
 	ver, data, err := zk.trie.ExecuteGet(readOp)
 
@@ -137,12 +134,15 @@ func ZKInit() {
 	}
 	zkPort := int32(viper.GetInt("zk-port"))
 	zid := int32(viper.GetInt("zid"))
+	asyncTrieUpdate := viper.GetBool("async-trie-update")
 
 	zkMetadataPort := int32(viper.GetInt("zk-metadata-port"))
 
 	go StartZKMetadataServer(zkMetadataPort + zid)
 	zkState.ProbeForMetadataAndUpdate()
-	go zkState.CheckAndUpdateTrie()
+	if asyncTrieUpdate {
+		go zkState.CheckAndUpdateTrie()
+	}
 	StartZKServer(zkPort + zid)
 }
 
