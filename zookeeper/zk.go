@@ -199,7 +199,12 @@ func (zk *ZKServer) GetZNode(ctx context.Context, path *pb.Path) (*pb.ZNode, err
 	gsn, shard, err := zkState.consensus.WriteToLog(record)
 
 	if err != nil {
-		return nil, err
+		log.Printf("[ Zookeeper ][ GetZNode ]Error writing the read operation %v; err: %v", op, err)
+		gsn, shard, err = zkState.consensus.WriteToLog(record)
+		if err != nil {
+			log.Printf("[ Zookeeper ][ GetZNode ]Error writing the read operation %v; err: %v", op, err)
+			return nil, err
+		}
 	}
 
 	log.Printf("[ Zookeeper ][ GetZNode ][ GetZNode ]Inserted Read operation at gsn: %v and shard: %v", gsn, shard)

@@ -124,8 +124,7 @@ func (c *Consensus) ReadBulkData(gsn1 int64, gsn2 int64) ([]string, error) {
 	for gsn := gsn1; gsn <= gsn2; gsn++ {
 		shardID, err := c.metadata.FetchShardId(gsn)
 		if err != nil {
-			log.Fatalf("[ Consensus ][ ReadBulkData ] ShardId fetch for gsn: %v Failed; %v", gsn, err)
-			return nil, err
+			log.Printf("[ Consensus ][ ReadBulkData ] ShardId fetch for gsn: %v Failed; %v", gsn, err)
 		}
 		shardIds[gsn] = shardID
 	}
@@ -136,8 +135,10 @@ func (c *Consensus) ReadBulkData(gsn1 int64, gsn2 int64) ([]string, error) {
 	// For each of the gsn between gsn1 and gsn2, use the ReadFromLog method to fetch the record and append it to the records slice
 	for gsn := gsn1; gsn <= gsn2; gsn++ {
 		shardID, exists := shardIds[gsn]
-		if !exists {
-			return nil, errors.New(fmt.Sprintf("[ Consensus ][ ReadBulkData ]Shard ID not found for GSN: %v", gsn))
+		if !exists || shardID == -1 {
+			// return nil, errors.New(fmt.Sprintf("[ Consensus ][ ReadBulkData ]Shard ID not found for GSN: %v", gsn))
+			log.Printf("[ Consensus ][ ReadBulkData ]Shard ID not found for GSN: %v", gsn)
+			continue
 		}
 
 		record, err := c.ReadFromLog(gsn, shardID)
