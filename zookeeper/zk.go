@@ -75,6 +75,7 @@ func (zk *Zookeeper) CheckAndUpdateTrie() {
 		zk.consensus.metadata.UpdateEntryState(nextOpAt)
 		zk.consensus.IncrementLSN()
 		zk.Unlock()
+		time.Sleep(sleepForIfNoUpdate)
 	}
 }
 
@@ -96,7 +97,10 @@ func (zk *Zookeeper) ApplyAllPendingOpsAndReturnRead(latestGSN int64, readOp str
 	for idx, op := range operations {
 		log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Applying operation %v at sequence number: %v", op, currentLSN+int64(idx))
 		zk.trie.Execute(op)
-		zk.consensus.metadata.UpdateEntryState(currentLSN + int64(idx))
+	}
+
+	for idx := currentLSN; idx <= latestGSN; idx++ {
+		zk.consensus.metadata.UpdateEntryState(int64(idx))
 	}
 
 	log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Applied all pending ops")
@@ -105,6 +109,8 @@ func (zk *Zookeeper) ApplyAllPendingOpsAndReturnRead(latestGSN int64, readOp str
 	// log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Trie: \n%v", zk.trie.PrintTrie(zk.trie.Root, 0))
 
 	ver, data, err := zk.trie.ExecuteGet(readOp)
+
+	log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]got read for operation %v: %v", readOp, data)
 
 	if err != nil {
 		log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Error: %v", err)
