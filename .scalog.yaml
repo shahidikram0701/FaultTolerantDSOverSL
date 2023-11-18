@@ -1,6 +1,6 @@
 order-port: 26770
 raft-port: 27238
-order-batching-interval: 20ms
+order-batching-interval: 10ms
 
 order-ip-address:
   - 128.110.216.64
@@ -9,7 +9,7 @@ order-ip-address:
 
 data-port: 23282
 data-replication-factor: 2
-data-batching-interval: 20ms
+data-batching-interval: 10ms
 data-ip-address-0:
   - 128.110.216.201
   - 128.110.216.71
@@ -32,12 +32,12 @@ zids:
   - 1
   - 2
 
-zk-sleep-if-no-update: 25 #ms
+zk-sleep-if-no-update: 15 #ms
 zk-metadata-port: 23300
 
 metadata-trim-threshold: 200 
 metadata-probe-frequency: 100 # ms
-metadata-trim-frequency: 800 # ms
+metadata-trim-frequency: 110 # ms
 
 async-trie-update: true
-disable-logs: true
+disable-logs: false
