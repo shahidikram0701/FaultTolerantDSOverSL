@@ -2,10 +2,11 @@ package zookeeper
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
+
+	log "github.com/scalog/scalog/logger"
 )
 
 /* Trie data structure as the underlying implementation of ZK*/

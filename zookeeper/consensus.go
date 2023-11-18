@@ -3,7 +3,8 @@ package zookeeper
 import (
 	"errors"
 	"fmt"
-	"log"
+
+	log "github.com/scalog/scalog/logger"
 
 	client "github.com/scalog/scalog/client"
 	"github.com/scalog/scalog/pkg/address"
