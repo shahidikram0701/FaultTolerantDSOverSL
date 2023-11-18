@@ -265,16 +265,18 @@ func (md *Metadata) FetchShardIdFromLog(gsn int64) (int32, error) {
 // if found from the peers then update local store and return
 // else probe the shared log and find the shard mapping
 func (md *Metadata) FetchShardId(gsn int64) (int32, error) {
+	log.Printf("[ Metadata ][ FetchShardId ]Fetching Shard Id for GSN: %v", gsn)
 	sid, err := md.GetShardId(gsn)
 	if err == nil {
 		return sid, nil
 	}
-
+	log.Printf("[ Metadata ][ FetchShardId ]Fetching Shard Id for GSN: %v. DID NOT FIND IN MY METADATA TABLE", gsn)
 	sid, err = md.FetchShardIdFromPeers(gsn)
 	if err == nil {
 		md.Insert(gsn, sid)
 		return sid, nil
 	}
+	log.Printf("[ Metadata ][ FetchShardId ]Fetching Shard Id for GSN: %v. DID NOT FIND IN ANY PEERS' METADATA TABLE", gsn)
 
 	sid, err = md.FetchShardIdFromLog(gsn)
 
@@ -282,6 +284,8 @@ func (md *Metadata) FetchShardId(gsn int64) (int32, error) {
 		md.Insert(gsn, sid)
 		return sid, nil
 	}
+
+	log.Printf("[ Metadata ][ FetchShardId ]Fetching Shard Id for GSN: %v. DID NOT FIND IN LOG!", gsn)
 
 	return -1, errors.New("Invalid gsn")
 }
@@ -332,7 +336,7 @@ func (zkMetadata *ZKMetadataServer) FetchOne(ctx context.Context, request *pb2.F
 	shardId, err := zkState.GetShardIdForGSNFromMetadata(reqGSN)
 
 	if err != nil {
-		log.Printf("[ Zookeeper Metadata ]GSN not present here: %v", err)
+		log.Printf("[ Zookeeper Metadata Server ]GSN: %v not present here: %v", reqGSN, err)
 
 		return nil, err
 	}
