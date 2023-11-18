@@ -7,13 +7,13 @@
 # go install github.com/mattn/goreman@latest
 
 
-wget https://go.dev/dl/go1.21.3.linux-arm64.tar.gz
-sudo tar -C /usr/local/bin/ -xzf go1.21.3.linux-arm64.tar.gz
-echo 'export PATH=$PATH:/usr/local/bin/go/bin' >> ~/.bashrc
-source ~/.bashrc
-rm -f go1.21.3.linux-arm64.tar.gz
+# wget https://go.dev/dl/go1.21.3.linux-arm64.tar.gz
+# sudo tar -C /usr/local/bin/ -xzf go1.21.3.linux-arm64.tar.gz
+# echo 'export PATH=$PATH:/usr/local/bin/go/bin' >> ~/.bashrc
+# source ~/.bashrc
+# rm -f go1.21.3.linux-arm64.tar.gz
 
-echo "Setup go alias and go in PATH"
+# echo "Setup go alias and go in PATH"
 
 /usr/local/bin/go/bin/go mod init github.com/scalog/scalog && /usr/local/bin/go/bin/go mod tidy && /usr/local/bin/go/bin/go mod vendor || exit 1
 echo "Setup vendor files"
