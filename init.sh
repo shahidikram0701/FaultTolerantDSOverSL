@@ -28,3 +28,6 @@ echo "Updated gRPC version in go.mod"
 
 /usr/local/bin/go/bin/go mod tidy && /usr/local/bin/go/bin/go mod vendor && /usr/local/bin/go/bin/go build .
 echo "Syncing libraries and building pkg"
+
+echo "Starting the component based on the .scalog.yaml config file and the machine IP"
+python3 init-cloudlab.py
