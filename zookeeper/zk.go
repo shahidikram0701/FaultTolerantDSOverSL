@@ -84,6 +84,8 @@ func (zk *Zookeeper) ApplyAllPendingOpsAndReturnRead(latestGSN int64, readOp str
 
 	currentLSN := zk.consensus.LSN
 
+	log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Fetching all shards for seq numbers: %v to %v(both included)", currentLSN, latestGSN)
+
 	operations, err := zk.consensus.ReadBulkData(currentLSN, latestGSN)
 
 	if err != nil {
