@@ -2,8 +2,9 @@ package zookeeper
 
 import (
 	"fmt"
-	"log"
 	"net"
+
+	log "github.com/scalog/scalog/logger"
 )
 
 func GetOutboundIP() string {

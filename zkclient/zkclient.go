@@ -14,12 +14,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-func Start() {
-	zkNodesIp := viper.GetStringSlice("zk-servers")
-	clients := []pb.ZooKeeperClient{}
-
+func getClient(ip string, idx int) (pb.ZooKeeperClient, *grpc.ClientConn) {
 	zkPort := int32(viper.GetInt("zk-port"))
-
 	zids_ := viper.Get("zids").([]interface{})
 	var zids []int
 
@@ -27,25 +23,30 @@ func Start() {
 		zids = append(zids, zid_.(int))
 	}
 
+	serverAddress := fmt.Sprintf("%v:%v", ip, zkPort+int32(zids[idx]))
+
+	conn, err := grpc.Dial(serverAddress, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Failed to connect: %v", err)
+	}
+	// defer conn.Close()
+
+	client := pb.NewZooKeeperClient(conn)
+
+	return client, conn
+
+}
+
+func Start() {
+	zkNodesIp := viper.GetStringSlice("zk-servers")
+
 	rand.Seed(time.Now().UnixNano())
 
-	for idx, ip := range zkNodesIp {
-		fmt.Printf("initiating client to: %v:%v\n", ip, zkPort+int32(zids[idx]))
-		serverAddress := fmt.Sprintf("%v:%v", ip, zkPort+int32(zids[idx]))
-
-		conn, err := grpc.Dial(serverAddress, grpc.WithInsecure())
-		if err != nil {
-			log.Fatalf("Failed to connect: %v", err)
-		}
-		defer conn.Close()
-
-		client := pb.NewZooKeeperClient(conn)
-
-		clients = append(clients, client)
-	}
+	clientNum := rand.Intn(len(zkNodesIp))
 
 	for {
-		client := clients[rand.Intn(len(clients))]
+		client, conn := getClient(zkNodesIp[clientNum], clientNum)
+		defer conn.Close()
 		fmt.Println("Choose an action:")
 		fmt.Println("1. Create ZNode")
 		fmt.Println("2. Read ZNode")
@@ -68,11 +69,17 @@ func Start() {
 				Path: path,
 				Data: []byte(data),
 			}
-			createResponse, err := client.CreateZNode(context.Background(), znode)
-			if err != nil {
-				log.Printf("CreateZNode failed: %v", err)
-			} else {
-				fmt.Printf("Created ZNode: %v\n", createResponse.Path)
+			for {
+				createResponse, err := client.CreateZNode(context.Background(), znode)
+				if err != nil {
+					log.Printf("CreateZNode failed: %v", err)
+					clientNum = (clientNum + 1) % len(zkNodesIp)
+					client, conn = getClient(zkNodesIp[clientNum], clientNum)
+					defer conn.Close()
+				} else {
+					fmt.Printf("Created ZNode: %v\n", createResponse.Path)
+					break
+				}
 			}
 
 		case 2:
@@ -89,11 +96,17 @@ func Start() {
 			// path = strings.Trim(path, "/") // Remove leading/trailing slashes
 
 			pathObj := &pb.Path{Path: path}
-			getResponse, err := client.GetZNode(context.Background(), pathObj)
-			if err != nil {
-				log.Printf("GetZNode failed: %v", err)
-			} else {
-				fmt.Printf("ZNode Path: %v\nZNode Data: %v\n", getResponse.Path, string(getResponse.Data))
+			for {
+				getResponse, err := client.GetZNode(context.Background(), pathObj)
+				if err != nil {
+					log.Printf("GetZNode failed: %v", err)
+					clientNum = (clientNum + 1) % len(zkNodesIp)
+					client, conn = getClient(zkNodesIp[clientNum], clientNum)
+					defer conn.Close()
+				} else {
+					fmt.Printf("ZNode Path: %v\nZNode Data: %v\n", getResponse.Path, string(getResponse.Data))
+					break
+				}
 			}
 
 		case 3:
