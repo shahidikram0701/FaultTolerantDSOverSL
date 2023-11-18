@@ -1,6 +1,6 @@
 order-port: 26770
 raft-port: 27238
-order-batching-interval: 50ms
+order-batching-interval: 10ms
 
 order-ip-address:
   - 128.110.216.64
@@ -9,7 +9,7 @@ order-ip-address:
 
 data-port: 23282
 data-replication-factor: 2
-data-batching-interval: 50ms
+data-batching-interval: 10ms
 data-ip-address-0:
   - 128.110.216.201
   - 128.110.216.71
@@ -40,4 +40,4 @@ metadata-probe-frequency: 100 # ms
 metadata-trim-frequency: 50 # ms
 
 async-trie-update: true
-disable-logs: false
+disable-logs: true
