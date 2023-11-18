@@ -69,12 +69,17 @@ func (md *Metadata) DeleteDoneEntries() {
 		log.Printf("[ Zookeeper Metadata ][ TrimMetadata ] No Trim: Not reached Trim Threshold of %v. Current metadata size: %v", trimThreshold, len(md.items))
 		return
 	}
-
+	toDeleteGSN := []int64{}
 	for gsn, item := range md.items {
 		if item.State == Done {
 			log.Printf("[ Zookeeper Metadata ][ DeleteDoneEntries ] Removing %v", item)
-			delete(md.items, gsn)
+			toDeleteGSN = append(toDeleteGSN, gsn)
+			// delete(md.items, gsn)
 		}
+	}
+
+	for _, delGSN := range toDeleteGSN {
+		delete(md.items, delGSN)
 	}
 }
 
