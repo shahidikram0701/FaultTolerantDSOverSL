@@ -50,7 +50,9 @@ func Start() {
 		fmt.Println("Choose an action:")
 		fmt.Println("1. Create ZNode")
 		fmt.Println("2. Read ZNode")
-		fmt.Println("3. Exit")
+		fmt.Println("3. Insert Data")
+		fmt.Println("4. Get Data")
+		fmt.Println("5. Exit")
 		fmt.Print("Enter your choice: ")
 
 		var choice int
@@ -108,8 +110,43 @@ func Start() {
 					break
 				}
 			}
-
 		case 3:
+			fmt.Print("How many records to enter: ")
+			var n int
+			fmt.Scanln(&n)
+
+			for i := 0; i < n; i++ {
+				key_ := fmt.Sprintf("key-%v", i)
+				value_ := fmt.Sprintf("value-%v", i)
+
+				znode := &pb.ZNode{
+					Path: key_,
+					Data: []byte(value_),
+				}
+
+				_, err := client.CreateZNode(context.Background(), znode)
+				if err == nil {
+					// fmt.Printf("created: %v -> %v", path, value_)
+					fmt.Printf(".")
+				}
+			}
+			fmt.Printf("\n")
+		case 4:
+			fmt.Print("How many records to read: ")
+			var n int
+			fmt.Scanln(&n)
+
+			for i := 0; i < n; i++ {
+				key_ := fmt.Sprintf("key-%v", i)
+				pathObj := &pb.Path{Path: key_}
+
+				_, err := client.GetZNode(context.Background(), pathObj)
+				if err == nil {
+					fmt.Printf(".")
+				}
+			}
+			fmt.Printf("\n")
+		case 5:
 			fmt.Println("Exiting...")
 			os.Exit(0)
 

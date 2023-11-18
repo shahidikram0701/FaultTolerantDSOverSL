@@ -3,6 +3,7 @@ package zookeeper
 import (
 	"fmt"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 
@@ -49,6 +50,8 @@ func (t *Trie) Upsert(components []string, op string, data string) {
 func (t *Trie) Get(components []string, opts ...int) (ver int, op string, data string) {
 	current := t.Root
 	version := -1
+
+	log.Printf("[Get]components: %v", components)
 
 	for _, component := range components {
 		// Path does not exist: TODO find a way to return better error codes
@@ -132,6 +135,23 @@ func (t *Trie) PrintTrie(node *TrieNode, depth int) string {
 	return serialisedTrie
 }
 
+func parsePathComponents(inputPath string) []string {
+	// Clean the path to handle cases like "a/b" or "/a/b" consistently
+	cleanPath := path.Clean("/" + inputPath)
+
+	// Split the path into components
+	components := strings.Split(cleanPath, "/")
+	// Remove empty components resulting from leading or consecutive slashes
+	var cleanedComponents []string
+	for _, component := range components {
+		if component != "" {
+			cleanedComponents = append(cleanedComponents, component)
+		}
+	}
+
+	return cleanedComponents
+}
+
 /* Parsing of the main operation received from ZK client */
 /* Returns array of split location, operations, and value */
 func parse(input string) ([]string, string, string) {
@@ -153,8 +173,7 @@ func parse(input string) ([]string, string, string) {
 		value = "-1"
 	}
 
-	components := strings.Split(location, "/")
-	components = components[1:]
+	components := parsePathComponents(location)
 
 	return components, operation, value
 }
