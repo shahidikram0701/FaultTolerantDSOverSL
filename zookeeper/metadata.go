@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"time"
+
+	log "github.com/scalog/scalog/logger"
 
 	pb2 "github.com/scalog/scalog/zookeeper/zookeepermetadatapb"
 	"github.com/spf13/viper"

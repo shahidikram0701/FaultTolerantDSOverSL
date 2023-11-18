@@ -76,6 +76,12 @@ func initConfig() {
 		log.Printf("Using config file: %v", viper.ConfigFileUsed())
 	}
 
+	disableLogging := bool(viper.GetBool("disable-logs"))
+	if disableLogging {
+		log.Printf("Disabling logging")
+		log.DisableLogging()
+	}
+
 	// Bind name space for k8s deployment
 	viper.BindEnv("namespace")
 }

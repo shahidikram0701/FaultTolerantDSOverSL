@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"io/ioutil"
 	"log"
 	"os"
 )
@@ -33,4 +34,8 @@ func Fatalf(format string, v ...interface{}) {
 
 func Panicf(format string, v ...interface{}) {
 	logger.Panicf(format, v...)
+}
+
+func DisableLogging() {
+	logger.SetOutput(ioutil.Discard)
 }

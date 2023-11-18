@@ -3,10 +3,11 @@ package zookeeper
 import (
 	context "context"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"time"
+
+	log "github.com/scalog/scalog/logger"
 
 	pb2 "github.com/scalog/scalog/zookeeper/zookeepermetadatapb"
 	pb "github.com/scalog/scalog/zookeeper/zookeeperpb"
