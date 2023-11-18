@@ -177,7 +177,7 @@ func (md *Metadata) ProbeAndUpdate() {
 }
 
 func (md *Metadata) Update(recievedMetadataList []*pb2.MetadataListItem) {
-	log.Printf("[ ZooKeeper Metadata ][ Update ]Current metadata: %v", md.items)
+	// log.Printf("[ ZooKeeper Metadata ][ Update ]Current metadata: %v", md.items)
 	// log.Printf("[ ZooKeeper Metadata ][ Update ]Recieved metadata: %v", recievedMetadataList)
 	for _, item := range recievedMetadataList {
 		err := md.Insert(item.GetGSN(), item.GetShardId())
