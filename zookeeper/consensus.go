@@ -70,7 +70,9 @@ func (c *Consensus) WriteToLog(record string) (int64, int32, error) {
 		return -1, -1, errors.New("nothing to write")
 	}
 
+	log.Printf("[ ConsensusModule ]Appending %v to the log", record)
 	gsn, shard, err := c.scalogClient.AppendOne(record)
+	log.Printf("[ ConsensusModule ]Appended %v to the log; (%v, %v)", record, gsn, shard)
 
 	if err != nil {
 		return -1, -1, errors.New(fmt.Sprintf("Error writing to the log: %v\n", err))
