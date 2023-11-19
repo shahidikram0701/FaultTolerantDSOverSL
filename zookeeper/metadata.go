@@ -295,6 +295,18 @@ func (md *Metadata) FetchShardId(gsn int64) (int32, error) {
 	return -1, errors.New("Invalid gsn")
 }
 
+/* Bulk fetch all from current GSN to latest */
+func (md *Metadata) FetchPendingShards(gsn int64) map[int64]int32 {
+	data := make(map[int64]int32)
+	for _, item := range md.items {
+		if item.GSN >= gsn {
+			data[item.GSN] = item.shardId
+		}
+	}
+
+	return data
+}
+
 func (md *Metadata) TrimMetadata() {
 	interval := time.Duration(int(viper.GetInt("metadata-trim-frequency"))) * time.Millisecond
 	ticker := time.NewTicker(interval)
