@@ -1,6 +1,4 @@
-vms=("ms0308.utah.cloudlab.us" "ms0313.utah.cloudlab.us" "ms0341.utah.cloudlab.us" "ms0610.utah.cloudlab.us" "ms0315.utah.cloudlab.us" "ms0301.utah.cloudlab.us" "ms0322.utah.cloudlab.us" "ms0607.utah.cloudlab.us" "ms0620.utah.cloudlab.us" "ms0635.utah.cloudlab.us" "ms0330.utah.cloudlab.us" "ms0321.utah.cloudlab.us")
-
-ssh_user="ritwikd2"
+source VMs.sh
 
 for vm in "${vms[@]}"; do
     echo "Connecting to $vm..."

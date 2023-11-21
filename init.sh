@@ -6,17 +6,15 @@
 
 # go install github.com/mattn/goreman@latest
 
-# which go
-# if [ "$?" != "0" ]
-# then
-#     wget --quiet https://go.dev/dl/go1.21.3.linux-arm64.tar.gz
-#     sudo tar -C /usr/local/bin/ -xzf go1.21.3.linux-arm64.tar.gz
-#     echo 'export PATH=$PATH:/usr/local/bin/go/bin' >> ~/.bashrc
-#     source ~/.bashrc
-#     rm -f go1.21.3.linux-arm64.tar.gz
-
-#     echo "Setup go alias and go in PATH"
-# fi
+if ! [ -f /usr/local/bin/go/bin/go ]
+then
+    wget --quiet https://go.dev/dl/go1.21.3.linux-arm64.tar.gz
+    sudo tar -C /usr/local/bin/ -xzf go1.21.3.linux-arm64.tar.gz
+    echo 'export PATH=$PATH:/usr/local/bin/go/bin' >> ~/.bashrc
+    source ~/.bashrc
+    rm -f go1.21.3.linux-arm64.tar.gz
+    echo "Setup go alias and go in PATH"
+fi
 
 /usr/local/bin/go/bin/go mod init github.com/scalog/scalog && /usr/local/bin/go/bin/go mod tidy && /usr/local/bin/go/bin/go mod vendor || exit 1
 echo "Setup vendor files"
@@ -28,21 +26,3 @@ echo "Updated gRPC version in go.mod"
 
 /usr/local/bin/go/bin/go mod tidy && /usr/local/bin/go/bin/go mod vendor && /usr/local/bin/go/bin/go build .
 echo "Syncing libraries and building pkg"
-
-# # echo "Deploy is ${DEPLOY}"
-# # if [ "${DEPLOY}" == "1" ]
-# # then
-# echo "Deploying the component on the machine"
-if [ -f *_process_id.log ]
-then
-    PID=$(cat *_process_id.log)
-    kill -9 $PID || true
-    rm -rf *_process_id.log || true
-fi
-
-PID=$(ps aux | grep "./scalog.*--config" | head -1 | awk '{print $2}')
-kill -9 $PID || true
-
-# echo "Starting the component based on the .scalog.yaml config file and the machine IP"
-# python3 init-cloudlab.py
-# # fi
