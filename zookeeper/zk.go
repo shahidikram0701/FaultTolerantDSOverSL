@@ -90,7 +90,7 @@ func (zk *Zookeeper) ApplyAllPendingOpsAndReturnRead(latestGSN int64, readOp str
 	operations, err := zk.consensus.ReadBulkData(currentLSN, latestGSN)
 
 	if err != nil {
-		log.Fatalf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Error reading all the pending ops from seq number: %v to %v", currentLSN, latestGSN)
+		log.Printf("[ Zookeeper ][ ApplyAllPendingOpsAndReturnRead ]Error reading all the pending ops from seq number: %v to %v", currentLSN, latestGSN)
 		return -1, nil, err
 	}
 

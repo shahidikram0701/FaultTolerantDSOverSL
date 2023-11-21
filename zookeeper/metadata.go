@@ -164,7 +164,8 @@ func (md *Metadata) ProbeAndUpdate() {
 
 			conn, err := grpc.Dial(serverAddress, grpc.WithInsecure())
 			if err != nil {
-				log.Fatalf("[ ZookKeeper Metadata ] Failed to connect to ZkMetadata server: %v", err)
+				log.Printf("[ ZookKeeper Metadata ] Failed to connect to ZkMetadata server: %v", err)
+				continue
 			}
 			client := pb2.NewZooKeeperClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -223,7 +224,8 @@ func (md *Metadata) FetchShardIdFromPeers(gsn int64) (int32, error) {
 			serverAddress := fmt.Sprintf("%v:%v", zkNodeIP, zkMetadataPort+zid)
 			conn, err := grpc.Dial(serverAddress, grpc.WithInsecure())
 			if err != nil {
-				log.Fatalf("[ ZookKeeper Metadata ][ FetchShardIdFromPeers ] Failed to connect to ZkMetadata server: %v", err)
+				log.Printf("[ ZookKeeper Metadata ][ FetchShardIdFromPeers ] Failed to connect to ZkMetadata server: %v", err)
+				return
 			}
 			client := pb2.NewZooKeeperClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -246,10 +248,18 @@ func (md *Metadata) FetchShardIdFromPeers(gsn int64) (int32, error) {
 	}()
 
 	// Return the first result received from any Zookeeper server
-	for shardID := range resultCh {
 
-		return shardID, nil
+	select {
+	case shardID, ok := <-resultCh:
+		if ok {
+			log.Printf("[ ZooKeeper Metadata ][ FetchShardIdFromPeers ] Got shardId: %v for GSN: %v", shardID, gsn)
+			return shardID, nil
+		}
 	}
+	// for shardID := range resultCh {
+	// 	log.Printf("[ ZooKeeper Metadata ][ FetchShardIdFromPeers ] Got shardId: %v for GSN: %v", shardID, gsn)
+	// 	return shardID, nil
+	// }
 
 	return -1, errors.New(fmt.Sprintf("[ ZookKeeper Metadata ][ FetchShardIdFromPeers ] Didnt find shard for gsn %v from any peer", gsn))
 }
