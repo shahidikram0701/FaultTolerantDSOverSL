@@ -297,6 +297,8 @@ func (md *Metadata) FetchShardId(gsn int64) (int32, error) {
 
 /* Bulk fetch all from current GSN to latest */
 func (md *Metadata) FetchPendingShards(gsn int64) map[int64]int32 {
+	md.RLock()
+	defer md.RUnlock()
 	data := make(map[int64]int32)
 	for _, item := range md.items {
 		if item.GSN >= gsn {
