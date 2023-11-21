@@ -33,15 +33,15 @@ echo "Syncing libraries and building pkg"
 # # if [ "${DEPLOY}" == "1" ]
 # # then
 # echo "Deploying the component on the machine"
-# if [ -f *_process_id.log ]
-# then
-#     PID=$(cat *_process_id.log)
-#     kill -9 $PID || true
-#     rm -rf *_process_id.log || true
-# fi
+if [ -f *_process_id.log ]
+then
+    PID=$(cat *_process_id.log)
+    kill -9 $PID || true
+    rm -rf *_process_id.log || true
+fi
 
-# PID=$(ps aux | grep "./scalog.*--config" | head -1 | awk '{print $2}')
-# kill -9 $PID || true
+PID=$(ps aux | grep "./scalog.*--config" | head -1 | awk '{print $2}')
+kill -9 $PID || true
 
 # echo "Starting the component based on the .scalog.yaml config file and the machine IP"
 # python3 init-cloudlab.py
