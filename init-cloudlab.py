@@ -21,6 +21,7 @@ CONFIG_FILE = '.scalog.yaml'
 
 
 def run_cmd(command, component):
+    print(f'Running: {command}')
     process = subprocess.Popen(command.split(), shell=False, stdout=subprocess.DEVNULL)
     with open(f'{component}_process_id.log', 'w') as f:
         f.write(str(process.pid))
