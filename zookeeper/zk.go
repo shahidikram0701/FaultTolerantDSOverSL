@@ -55,97 +55,98 @@ type GSN_OP_Pair struct {
 	op  string
 }
 
-func (zk *Zookeeper) CheckAndUpdateTrie() {
+func (zk *Zookeeper) CheckAndUpdateTrieBulk() {
+	log.Printf("[ Zookeeper ]Starting bulk async updates...")
 	sleepForIfNoUpdate := time.Duration(int(viper.GetInt("zk-sleep-if-no-update"))) * time.Millisecond
 	var wg sync.WaitGroup
 
-	parallel_bulk := true
+	for {
+		zk.Lock()
+		nextOpAt := zk.consensus.LSN
+		gsn_shard_map := zk.consensus.metadata.FetchPendingShards(nextOpAt)
 
-	if parallel_bulk == true {
-		for {
-			zk.Lock()
-			nextOpAt := zk.consensus.LSN
-			gsn_shard_map := zk.consensus.metadata.FetchPendingShards(nextOpAt)
-
-			if len(gsn_shard_map) == 0 {
-				log.Printf("[ Zookeeper ][ UpdateTrie ]No new update to apply;")
-				time.Sleep(sleepForIfNoUpdate)
-				zk.Unlock()
-				continue
-			}
-
-			outputCh := make(chan GSN_OP_Pair, len(gsn_shard_map))
-
-			for gsn, shard := range gsn_shard_map {
-				wg.Add(1)
-
-				go func(gsn int64, shard int32) {
-					defer wg.Done()
-					op, err := zk.consensus.ReadFromLog(gsn, shard)
-					if err != nil {
-						log.Printf("[ Zookeeper ][ UpdateTrie ]Reading operation from log failed for lsn: %v at sid: %v with error: %v", gsn, shard, err)
-						// zk.Unlock()
-						return
-					}
-					zk.consensus.metadata.UpdateEntryState(gsn)
-					if len(op) != 0 {
-						// Successfully fetched the operation, send it to the output channel
-						message := GSN_OP_Pair{GSN: gsn, op: op}
-						outputCh <- message
-					}
-				}(gsn, shard)
-			}
-
-			// goroutine to wait for all requests to finish
-			go func() {
-				wg.Wait()
-				close(outputCh)
-			}()
-			// Channels cannot be sorted so hold it in another var first
-			var pairs []GSN_OP_Pair
-			for pair := range outputCh {
-				pairs = append(pairs, pair)
-			}
-			// Sorting the slice by GSN - so that ops can be performed in-order
-			sort.Slice(pairs, func(i, j int) bool {
-				return pairs[i].GSN < pairs[j].GSN
-			})
-			for _, pair := range pairs {
-				log.Printf("[ Zookeeper ][ UpdateTrie ]Updating trie with operation: %v LSN: %v", pair.op, zk.consensus.LSN)
-				zk.trie.Execute(pair.op)
-				zk.consensus.IncrementLSN()
-			}
-
-			zk.Unlock()
+		if len(gsn_shard_map) == 0 {
+			log.Printf("[ Zookeeper ][ UpdateTrie ]No new update to apply;")
 			time.Sleep(sleepForIfNoUpdate)
+			zk.Unlock()
+			continue
 		}
-	} else {
-		for {
-			zk.Lock()
-			nextOpAt := zk.consensus.LSN
-			shardId, err := zk.consensus.metadata.FetchShardId(nextOpAt)
 
-			if err != nil {
-				log.Printf("[ Zookeeper ][ UpdateTrie ]No new update to apply; %v", err)
-				time.Sleep(sleepForIfNoUpdate)
-				zk.Unlock()
-				continue
-			}
+		outputCh := make(chan GSN_OP_Pair, len(gsn_shard_map))
 
-			op, err := zk.consensus.ReadFromLog(nextOpAt, shardId)
-			if err != nil {
-				log.Printf("[ Zookeeper ][ UpdateTrie ]Reading operation from log failed for lsn: %v at sid: %v with error: %v", nextOpAt, shardId, err)
-				zk.Unlock()
-				continue
-			}
+		for gsn, shard := range gsn_shard_map {
+			wg.Add(1)
 
-			log.Printf("[ Zookeeper ][ UpdateTrie ]Updating trie with operation: %v", op)
-			zk.trie.Execute(op)
-			zk.consensus.metadata.UpdateEntryState(nextOpAt)
+			go func(gsn int64, shard int32) {
+				defer wg.Done()
+				op, err := zk.consensus.ReadFromLog(gsn, shard)
+				if err != nil {
+					log.Printf("[ Zookeeper ][ UpdateTrie ]Reading operation from log failed for lsn: %v at sid: %v with error: %v", gsn, shard, err)
+					// zk.Unlock()
+					return
+				}
+				if len(op) != 0 {
+					// Successfully fetched the operation, send it to the output channel
+					message := GSN_OP_Pair{GSN: gsn, op: op}
+					outputCh <- message
+				}
+			}(gsn, shard)
+		}
+
+		// goroutine to wait for all requests to finish
+		go func() {
+			wg.Wait()
+			close(outputCh)
+		}()
+		// Channels cannot be sorted so hold it in another var first
+		var pairs []GSN_OP_Pair
+		for pair := range outputCh {
+			pairs = append(pairs, pair)
+		}
+		// Sorting the slice by GSN - so that ops can be performed in-order
+		sort.Slice(pairs, func(i, j int) bool {
+			return pairs[i].GSN < pairs[j].GSN
+		})
+		for _, pair := range pairs {
+			log.Printf("[ Zookeeper ][ UpdateTrie ]Updating trie with operation: %v LSN: %v", pair.op, zk.consensus.LSN)
+			zk.trie.Execute(pair.op)
+			zk.consensus.metadata.UpdateEntryState(pair.GSN)
 			zk.consensus.IncrementLSN()
-			zk.Unlock()
-			time.Sleep(sleepForIfNoUpdate)
 		}
+
+		zk.Unlock()
+		// time.Sleep(sleepForIfNoUpdate)
+	}
+}
+
+func (zk *Zookeeper) CheckAndUpdateTrie() {
+	sleepForIfNoUpdate := time.Duration(int(viper.GetInt("zk-sleep-if-no-update"))) * time.Millisecond
+
+	for {
+		zk.Lock()
+		nextOpAt := zk.consensus.LSN
+		shardId, err := zk.consensus.metadata.FetchShardId(nextOpAt)
+
+		if err != nil {
+			log.Printf("[ Zookeeper ][ UpdateTrie ]No new update to apply; %v", err)
+			time.Sleep(sleepForIfNoUpdate)
+			zk.Unlock()
+			continue
+		}
+
+		op, err := zk.consensus.ReadFromLog(nextOpAt, shardId)
+		if err != nil {
+			log.Printf("[ Zookeeper ][ UpdateTrie ]Reading operation from log failed for lsn: %v at sid: %v with error: %v", nextOpAt, shardId, err)
+			zk.Unlock()
+			continue
+		}
+
+		log.Printf("[ Zookeeper ][ UpdateTrie ]Updating trie with operation: %v", op)
+		zk.trie.Execute(op)
+		zk.consensus.metadata.UpdateEntryState(nextOpAt)
+		zk.consensus.IncrementLSN()
+		zk.Unlock()
+		// time.Sleep(sleepForIfNoUpdate)
 	}
 }
 
@@ -217,10 +218,16 @@ func ZKInit() {
 
 	zkMetadataPort := int32(viper.GetInt("zk-metadata-port"))
 
+	parallelAsyncTrieUpdate := viper.GetBool("parallel-bulk-aync-update")
+
 	go StartZKMetadataServer(zkMetadataPort + zid)
 	zkState.ProbeForMetadataAndUpdate()
 	if asyncTrieUpdate {
-		go zkState.CheckAndUpdateTrie()
+		if parallelAsyncTrieUpdate {
+			go zkState.CheckAndUpdateTrieBulk()
+		} else {
+			go zkState.CheckAndUpdateTrie()
+		}
 	}
 	StartZKServer(zkPort + zid)
 }
