@@ -23,7 +23,6 @@ func Start() {
 
 func StartOrder(oid int32) {
 	// read configuration
-	numReplica := int32(viper.GetInt("order-replication-factor"))
 	dataNumReplica := int32(viper.GetInt("data-replication-factor"))
 	batchingInterval, err := time.ParseDuration(viper.GetString("order-batching-interval"))
 	if err != nil {
@@ -31,14 +30,15 @@ func StartOrder(oid int32) {
 	}
 	port := int32(viper.GetInt("order-port")) + oid
 	log.Infof("order-port: %v", port)
+
+	peerList := viper.GetStringSlice("order-ip-address")
+	numReplica := int32(len(peerList))
 	raftPort := int32(viper.GetInt("raft-port"))
-	raftIpAddr := string(viper.GetString("order-ip-address"))
 	log.Infof("Starting order server %v at 0.0.0.0:%v", oid, port)
 	log.Infof("replication-factor: %v", numReplica)
 	log.Infof("order-batching-interval: %v", batchingInterval)
-	peerList := make([]string, numReplica)
 	for i := int32(0); i < numReplica; i++ {
-		peerList[int(i)] = fmt.Sprintf("http://%v:%v", raftIpAddr, raftPort+i)
+		peerList[int(i)] = fmt.Sprintf("http://%v:%v", peerList[int(i)], raftPort)
 	}
 	// listen to the port
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%v", port))
