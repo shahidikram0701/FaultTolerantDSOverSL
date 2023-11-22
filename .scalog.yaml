@@ -41,3 +41,4 @@ metadata-trim-frequency: 200 # ms
 
 async-trie-update: true
 disable-logs: true
+parallel-bulk-aync-update: false
